@@ -128,22 +128,30 @@ class EscolhaPersonagem extends Phaser.Scene {
   }
 
   create(){
-    
-    const bgKey = this.textures.exists('fundo_menu') ? 'fundo_menu' : 'fundoDefault';
-    this.add.image(800, 450, bgKey).setDisplaySize(1600,900);
+  const bgKey = this.textures.exists('fundo_menu') ? 'fundo_menu' : 'fundoDefault';
+  this.add.image(800, 450, bgKey).setDisplaySize(1600,900);
 
-    this.add.text(800, 120, "Escolha seu personagem", { fontSize:'56px', fill:'#ffffff' }).setOrigin(0.5);
-    this.add.image(1000, 360, 'imgGabriel').setScale(1.5);
-    const btnG = this.add.text(1000, 560, "Gabriel", { fontSize:'48px', fill:'#ffffff' })
-      .setOrigin(0.5).setInteractive();
-    this.add.image(600, 360, 'imgThaina').setScale(1.5);
-    const btnT = this.add.text(600, 560, "Thainá", { fontSize:'48px', fill:'#ffffff' })
-      .setOrigin(0.5).setInteractive();
+  this.add.text(800, 120, "Escolha seu personagem", { fontSize:'56px', fill:'#ffffff' }).setOrigin(0.5);
 
-    const iniciarCom = (p) => { personagemSelecionado = p; this.scene.start('Fase0'); };
-    btnG.on('pointerdown', () => iniciarCom('gabriel'));
-    btnT.on('pointerdown', () => iniciarCom('thaina'));
-  }
+  const imgGabriel = this.add.image(1000, 360, 'imgGabriel').setScale(1.5).setInteractive();
+  const btnG = this.add.text(1000, 560, "Gabriel", { fontSize:'48px', fill:'#ffffff' })
+    .setOrigin(0.5).setInteractive();
+
+  const imgThaina = this.add.image(600, 360, 'imgThaina').setScale(1.5).setInteractive();
+  const btnT = this.add.text(600, 560, "Thainá", { fontSize:'48px', fill:'#ffffff' })
+    .setOrigin(0.5).setInteractive();
+
+  const iniciarCom = (p) => { 
+    personagemSelecionado = p; 
+    this.scene.start('Fase0'); 
+  };
+
+  btnG.on('pointerdown', () => iniciarCom('gabriel'));
+  imgGabriel.on('pointerdown', () => iniciarCom('gabriel'));
+
+  btnT.on('pointerdown', () => iniciarCom('thaina'));
+  imgThaina.on('pointerdown', () => iniciarCom('thaina'));
+}
 }
 
 
@@ -261,7 +269,6 @@ class BaseFase extends Phaser.Scene {
   }
 
     update(){
-    // Input do jogador
     const left  = this.cursors.left.isDown  || this.keys.left.isDown  || mobile.left;
     const right = this.cursors.right.isDown || this.keys.right.isDown || mobile.right;
     const jump  = (this.cursors.up.isDown || this.keys.up.isDown || this.keys.space.isDown || mobile.jump);
@@ -284,19 +291,16 @@ class BaseFase extends Phaser.Scene {
       this.player.setVelocityY(-600); 
     }
 
-    // Atualiza stomp sensor
     this.playerFoot.x = this.player.x;
     this.playerFoot.y = this.player.y + (this.player.displayHeight/2) + 10;
     this.playerFoot.body.updateFromGameObject();
 
-    // Inimigos
     this.inimigos.children.iterate(e=>{
       if (!e || !e.body) return;
       const curVx = e.body.velocity.x || -100;
       const dir = Math.sign(curVx) || -1;
       const v = Math.max(60, Math.abs(curVx));
 
-      // probe à frente
       const aheadX = e.x + dir * (e.displayWidth/2 + 6);
       const aheadY = e.y + e.displayHeight/2 + 2;
       e.edgeProbe.x = aheadX;
@@ -316,11 +320,11 @@ class BaseFase extends Phaser.Scene {
         if (e.patrol.xMax != null && e.x >= e.patrol.xMax) e.setVelocityX(-Math.abs(v));
       }
 
-      // virar sprite
+  
       if (e.body.velocity.x < 0) {
-        e.setFlipX(false); // esquerda
+        e.setFlipX(false); 
       } else if (e.body.velocity.x > 0) {
-        e.setFlipX(true);  // direita
+        e.setFlipX(true);
       }
     });
 
