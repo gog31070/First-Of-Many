@@ -1,0 +1,445 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <title>F.O.M. ❤️</title>
+  <script src="https://cdn.jsdelivr.net/npm/phaser@3.70.0/dist/phaser.js"></script>
+  <style>
+    body {
+      margin: 0; padding: 0; background: #7375ff;
+      display: flex; justify-content: center; align-items: center; height: 100vh;
+      touch-action: manipulation;
+    }
+    canvas {
+      border: 3px solid #0400ff; border-radius: 12px;
+      box-shadow: 0 0 18px rgba(0,0,0,.35);
+    }
+  
+    .mobile-controls { position: fixed; left: 20px; bottom: 20px; display: none; gap: 14px; z-index: 10; }
+    .mobile-btn {
+      width: 72px; height: 72px; background: rgba(255,255,255,0.85);
+      border: 3px solid #0400ff; border-radius: 50%;
+      line-height: 72px; text-align: center; font-size: 28px; user-select: none;
+    }
+    .jump-btn { position: fixed; right: 20px; bottom: 20px; width: 92px; height: 92px; line-height: 92px; font-size: 30px; z-index: 10; display: none; }
+    @media (pointer: coarse) {
+      .mobile-controls { display: flex; }
+      .jump-btn { display: block; }
+    }
+  </style>
+</head>
+<body>
+
+  <div class="mobile-controls">
+    <div id="btnLeft" class="mobile-btn">←</div>
+    <div id="btnRight" class="mobile-btn">→</div>
+  </div>
+  <div id="btnJump" class="mobile-btn jump-btn">↑</div>
+
+<script>
+let personagemSelecionado = null;
+const mobile = { left:false, right:false, jump:false };
+
+
+class Menu extends Phaser.Scene {
+  constructor(){ super({ key:'Menu' }); }
+
+  preload(){
+
+    this.load.image('fundo_menu', 'imagens/fundo_menu.png');
+    this.load.image('fundoDefault', 'imagens/fundoDefault.png');
+    this.load.image('enemy1', 'imagens/inimigo1.png');
+    this.load.image('enemy2', 'imagens/inimigo2.png');
+    this.load.image('enemy3', 'imagens/inimigo3.png');
+    this.load.image('chao', 'imagens/chao.png');
+  }
+
+  create(){
+  
+    const bgKey = this.textures.exists('fundo_menu')
+      ? 'fundo_menu'
+      : (this.textures.exists('fundoDefault') ? 'fundoDefault' : null);
+
+    if (bgKey) {
+      this.add.image(800, 450, bgKey).setDisplaySize(1600, 900);
+    } else {
+      this.add.rectangle(800, 450, 1600, 900, 0xcfd8dc);
+    }
+
+    this.add.text(800, 220, "First of Many ❤️", { fontSize:'64px', fill:'#ffffff' }).setOrigin(0.5);
+
+    const start = this.add.text(800, 520, "▶ Começar", { fontSize:'48px', fill:'#ffffff' })
+      .setOrigin(0.5).setInteractive();
+    start.on('pointerdown', () => this.scene.start('EscolhaPersonagem'));
+
+    const controls = this.add.text(800, 610, "⚙️ Controles", { fontSize:'40px', fill:'#ffffff' })
+      .setOrigin(0.5).setInteractive();
+    controls.on('pointerdown', () => {
+      const ui = this._modal(
+        "Controles",
+        "← →  ou  A D : Andar\n↑  ou  W  ou  ESPAÇO : Pular\n\nMobile: botões (← → ⬆)\nMate inimigos caindo na cabeça"
+      );
+      ui.close.on('pointerdown', ui.destroy);
+    });
+
+    const credits = this.add.text(800, 680, "📜 Créditos", { fontSize:'40px', fill:'#ffffff' })
+      .setOrigin(0.5).setInteractive();
+    credits.on('pointerdown', () => {
+      const ui = this._modal(
+        "Créditos",
+        "Dev: Gabriel\nDiretor de Arte: Marco\nBeta Tester: Henrique\nMenção Especial: Thainá"
+      );
+      ui.close.on('pointerdown', ui.destroy);
+    });
+  }
+
+  _modal(title, text){
+    const bg = this.add.rectangle(800, 450, 820, 460, 0xffffff, 0.96).setStrokeStyle(4, 0x333333);
+    const t1 = this.add.text(800, 300, title, { fontSize:'48px', fill:'#000' }).setOrigin(0.5);
+    const t2 = this.add.text(800, 450, text, { fontSize:'32px', fill:'#000', align:'center' }).setOrigin(0.5);
+    const close = this.add.text(800, 600, "Fechar", { fontSize:'36px', fill:'#000' }).setOrigin(0.5).setInteractive();
+    return {
+      close,
+      destroy: () => { bg.destroy(); t1.destroy(); t2.destroy(); close.destroy(); }
+    };
+  }
+}
+
+
+class EscolhaPersonagem extends Phaser.Scene {
+  constructor(){ super({ key:'EscolhaPersonagem' }); }
+
+  preload(){
+
+    this.load.image('imgGabriel', 'imagens/gabriel.png');
+    this.load.image('imgThaina', 'imagens/thaina.png');
+
+
+    this.load.spritesheet('gabrielSprite', 'imagens/gabrielSprite.png', { frameWidth: 31, frameHeight: 42 });
+    this.load.spritesheet('thainaSprite', 'imagens/thainaSprite.png', { frameWidth: 31, frameHeight: 42 });
+
+
+    for(let i=0;i<=12;i++){
+      this.load.image('fundo'+i, `imagens/fundo${i}.png`);
+      this.load.image('quadro'+i, `imagens/quadro${i}.png`);
+    }
+    this.load.image('fundoFinal', 'imagens/fundoFinal.png');
+    this.load.image('quadroFinal', 'imagens/quadroFinal.png');
+  }
+
+  create(){
+    
+    const bgKey = this.textures.exists('fundo_menu') ? 'fundo_menu' : 'fundoDefault';
+    this.add.image(800, 450, bgKey).setDisplaySize(1600,900);
+
+    this.add.text(800, 120, "Escolha seu personagem", { fontSize:'56px', fill:'#ffffff' }).setOrigin(0.5);
+    this.add.image(1000, 360, 'imgGabriel').setScale(1.5);
+    const btnG = this.add.text(1000, 560, "Gabriel", { fontSize:'48px', fill:'#ffffff' })
+      .setOrigin(0.5).setInteractive();
+    this.add.image(600, 360, 'imgThaina').setScale(1.5);
+    const btnT = this.add.text(600, 560, "Thainá", { fontSize:'48px', fill:'#ffffff' })
+      .setOrigin(0.5).setInteractive();
+
+    const iniciarCom = (p) => { personagemSelecionado = p; this.scene.start('Fase0'); };
+    btnG.on('pointerdown', () => iniciarCom('gabriel'));
+    btnT.on('pointerdown', () => iniciarCom('thaina'));
+  }
+}
+
+
+
+class BaseFase extends Phaser.Scene {
+  constructor(key, proximaFase, mensagem, plataformasCfg, quadroPos, inimigosCfg=[], fundoKey, quadroKey, final=false){
+    super({ key });
+    this.proximaFase = proximaFase;
+    this.mensagem = mensagem;
+    this.plataformasCfg = plataformasCfg; 
+    this.quadroPos = quadroPos;           
+    this.inimigosCfg = inimigosCfg;       
+    this.fundoKey = fundoKey;           
+    this.quadroKey = quadroKey;          
+    this.final = final;                   
+    this.mobileHoldersSet = false;
+  }
+
+  create(){
+    const bgKey = this.textures.exists(this.fundoKey) ? this.fundoKey
+                 : (this.textures.exists('fundoDefault') ? 'fundoDefault' : null);
+    if (bgKey) this.add.image(800, 450, bgKey).setDisplaySize(1600,900);
+    else this.add.rectangle(800,450,1600,900,0xcfd8dc);
+
+    const tileW = this.textures.get('chao').getSourceImage().width;
+    this.plataformas = this.physics.add.staticGroup();
+    for (let i=0;i<Math.ceil(1600/tileW)+1;i++){
+      this.plataformas.create(tileW/2 + i*tileW, 880, 'chao').refreshBody();
+    }
+    this.plataformasCfg.forEach(p=>{
+      for (let i=0;i<p.w;i++){
+        this.plataformas.create(p.x + i*tileW, p.y, 'chao').refreshBody();
+      }
+    });
+
+    const spriteKey = (personagemSelecionado==='gabriel')?'gabrielSprite':'thainaSprite';
+    this.player = this.physics.add.sprite(100, 720, spriteKey).setScale(2.3);
+    this.player.setCollideWorldBounds(true);
+    this.physics.add.collider(this.player, this.plataformas);
+
+    if (!this.anims.exists('left_'+spriteKey)){
+      this.anims.create({ key:'left_'+spriteKey,  frames:this.anims.generateFrameNumbers(spriteKey,{start:0,end:3}), frameRate:10, repeat:-1 });
+      this.anims.create({ key:'turn_'+spriteKey,  frames:[{ key:spriteKey, frame:4 }], frameRate:20 });
+      this.anims.create({ key:'right_'+spriteKey, frames:this.anims.generateFrameNumbers(spriteKey,{start:5,end:8}), frameRate:10, repeat:-1 });
+    }
+
+    this.cursors = this.input.keyboard.createCursorKeys();
+    this.keys = this.input.keyboard.addKeys({
+      up: Phaser.Input.Keyboard.KeyCodes.W,
+      left: Phaser.Input.Keyboard.KeyCodes.A,
+      right: Phaser.Input.Keyboard.KeyCodes.D,
+      space: Phaser.Input.Keyboard.KeyCodes.SPACE,
+      skip: Phaser.Input.Keyboard.KeyCodes.P
+    });
+
+  
+    this.quadro = this.physics.add.staticSprite(this.quadroPos.x, this.quadroPos.y, this.quadroKey).setScale(1);
+    this.tweens.add({ targets:this.quadro, y:this.quadro.y-15, duration:1200, yoyo:true, repeat:-1, ease:'Sine.easeInOut' });
+    this.physics.add.overlap(this.player, this.quadro, this.coletarQuadro, null, this);
+
+    this.add.text(16,16,this.mensagem,{ fontSize:'28px', fill:'#000' });
+
+
+    this.inimigos = this.physics.add.group();
+    this.inimigosCfg.forEach(cfg=>{
+    const enemyKeys = ['enemy1', 'enemy2', 'enemy3'];
+
+
+    const chosenKey = cfg.key || Phaser.Utils.Array.GetRandom(enemyKeys);
+
+    const e = this.inimigos.create(cfg.x, cfg.y, chosenKey).setScale(2);
+
+      const dir = (cfg.dir || -1);
+      const speed = Math.abs(cfg.speed||100);
+      e.setVelocityX(dir*speed);
+      e.setCollideWorldBounds(true);
+      this.physics.add.collider(e, this.plataformas);
+
+
+      e.patrol = { xMin: cfg.xMin ?? null, xMax: cfg.xMax ?? null, speed: speed };
+
+      const aheadX = e.x + dir * (e.displayWidth/2 + 6);
+      const aheadY = e.y + e.displayHeight/2 + 2;
+      e.edgeProbe = this.add.rectangle(aheadX, aheadY, 4, 4, 0x00ff00, 0);
+      this.physics.add.existing(e.edgeProbe);
+      e.edgeProbe.body.setAllowGravity(false);
+      e.edgeProbe.body.setImmovable(true);
+    });
+
+    this.physics.add.collider(this.player, this.inimigos, this.playerHit, null, this);
+
+    this.playerFoot = this.add.rectangle(
+      this.player.x, this.player.y + this.player.displayHeight/2 + 10,
+      this.player.displayWidth * 0.7, 16, 0xff0000, 0
+    );
+    this.physics.add.existing(this.playerFoot);
+    this.playerFoot.body.setAllowGravity(false);
+    this.playerFoot.body.setImmovable(true);
+    this.physics.add.overlap(this.playerFoot, this.inimigos, this.playerStomp, null, this);
+
+    if (!this.mobileHoldersSet) {
+      const hold=(el,on,off)=>{
+        el.addEventListener('touchstart',e=>{e.preventDefault();on();},{passive:false});
+        el.addEventListener('touchend',e=>{e.preventDefault();off();},{passive:false});
+        el.addEventListener('touchcancel',e=>{e.preventDefault();off();},{passive:false});
+        el.addEventListener('mousedown',e=>{e.preventDefault();on();});
+        el.addEventListener('mouseup',e=>{e.preventDefault();off();});
+        el.addEventListener('mouseleave',e=>{e.preventDefault();off();});
+      };
+      hold(document.getElementById('btnLeft'), ()=>mobile.left=true,  ()=>mobile.left=false);
+      hold(document.getElementById('btnRight'),()=>mobile.right=true, ()=>mobile.right=false);
+      hold(document.getElementById('btnJump'), ()=>mobile.jump=true,  ()=>mobile.jump=false);
+      this.mobileHoldersSet = true;
+    }
+  }
+
+    update(){
+    // Input do jogador
+    const left  = this.cursors.left.isDown  || this.keys.left.isDown  || mobile.left;
+    const right = this.cursors.right.isDown || this.keys.right.isDown || mobile.right;
+    const jump  = (this.cursors.up.isDown || this.keys.up.isDown || this.keys.space.isDown || mobile.jump);
+    const spriteKey = (personagemSelecionado==='gabriel')?'gabrielSprite':'thainaSprite';
+
+    if (left){  
+      this.player.setVelocityX(-200); 
+      this.player.anims.play('left_'+spriteKey, true); 
+    }
+    else if (right){ 
+      this.player.setVelocityX(200); 
+      this.player.anims.play('right_'+spriteKey, true); 
+    }
+    else { 
+      this.player.setVelocityX(0); 
+      this.player.anims.play('turn_'+spriteKey); 
+    }
+
+    if (jump && this.player.body.blocked.down){ 
+      this.player.setVelocityY(-600); 
+    }
+
+    // Atualiza stomp sensor
+    this.playerFoot.x = this.player.x;
+    this.playerFoot.y = this.player.y + (this.player.displayHeight/2) + 10;
+    this.playerFoot.body.updateFromGameObject();
+
+    // Inimigos
+    this.inimigos.children.iterate(e=>{
+      if (!e || !e.body) return;
+      const curVx = e.body.velocity.x || -100;
+      const dir = Math.sign(curVx) || -1;
+      const v = Math.max(60, Math.abs(curVx));
+
+      // probe à frente
+      const aheadX = e.x + dir * (e.displayWidth/2 + 6);
+      const aheadY = e.y + e.displayHeight/2 + 2;
+      e.edgeProbe.x = aheadX;
+      e.edgeProbe.y = aheadY;
+      e.edgeProbe.body.updateFromGameObject();
+
+      let groundAhead = false;
+      this.physics.overlap(e.edgeProbe, this.plataformas, () => { groundAhead = true; });
+
+      if (!groundAhead) e.setVelocityX(-dir * v);
+
+      if (e.body.blocked.right) e.setVelocityX(-v);
+      if (e.body.blocked.left)  e.setVelocityX( v);
+
+      if (e.patrol) {
+        if (e.patrol.xMin != null && e.x <= e.patrol.xMin) e.setVelocityX( Math.abs(v) );
+        if (e.patrol.xMax != null && e.x >= e.patrol.xMax) e.setVelocityX(-Math.abs(v));
+      }
+
+      // virar sprite
+      if (e.body.velocity.x < 0) {
+        e.setFlipX(false); // esquerda
+      } else if (e.body.velocity.x > 0) {
+        e.setFlipX(true);  // direita
+      }
+    });
+
+    // Dev skip
+    if (Phaser.Input.Keyboard.JustDown(this.keys.skip)){
+      if (this.proximaFase) this.scene.start(this.proximaFase);
+      else this.scene.start('Menu');
+    }
+  }
+
+  coletarQuadro(){
+    if (this.final){
+      this.physics.pause();
+      this.add.rectangle(800,450,1000,320,0xffffff,0.9).setStrokeStyle(4,0x000000);
+      this.add.text(800,450,"Obrigado por esse 1 ano, meu amor,\no primeiro de muitos que virão!\nEu te amo demais,\nMeu cérebro!\n❤️",{fontSize:'48px',fill:'#000',align:'center'}).setOrigin(0.5);
+      this.time.delayedCall(15000,()=>this.scene.start('Menu'));
+    } else {
+      if (this.proximaFase) this.scene.start(this.proximaFase);
+      else this.scene.start('Menu');
+    }
+  }
+  playerHit(){ this.scene.restart(); }
+  playerStomp(foot, enemy){
+    if (this.player.body.velocity.y > 0 && enemy.active){
+      enemy.disableBody(true,true);
+      this.player.setVelocityY(-400);
+    }
+  }
+}
+
+class Fase0  extends BaseFase { constructor(){ super("Fase0","Fase1","Fase 0: Quando tudo começou ❤️",
+  [{x:705,y:816,w:4}],
+  {x:800,y:676}, [], "fundo0","quadro0"); } }
+
+class Fase1  extends BaseFase { constructor(){ super("Fase1","Fase2","Fase 1: Conhecendo as Famílias ❤️",
+  [ {x:420,y:720,w:4},{x:820,y:600,w:3},{x:1190,y:500,w:3} ],
+  {x:1260,y:325}, [], "fundo1","quadro1"); } }
+
+class Fase2  extends BaseFase { constructor(){ super("Fase2","Fase3","Fase 2: Ano Novo e Natal ❤️",
+  [ {x:320,y:720,w:3},{x:640,y:600,w:3},{x:960,y:480,w:3},{x:1257,y:380,w:3} ],
+  {x:1330,y:205}, [], "fundo2","quadro2"); } }
+
+class Fase3  extends BaseFase { constructor(){ super("Fase3","Fase4","Fase 3: Primeiros Aniversários ❤️",
+  [ {x:300,y:720,w:3},{x:580,y:600,w:3},{x:820,y:520,w:4},{x:1320,y:400,w:4} ],
+  {x:1427,y:225}, [ {x:840,y:440, dir:-1, xMin:820, xMax:1080} ], "fundo3","quadro3"); } }
+
+class Fase4  extends BaseFase { constructor(){ super("Fase4","Fase5","Fase 4: Flores Azuis ❤️",
+  [ {x:1000,y:740,w:3},{x:700,y:640,w:3},{x:550,y:500,w:2},{x:930,y:320,w:3} ],
+  {x:1000,y:145}, [ {x:700,y:560, dir:-1, xMin:400, xMax:920} ], "fundo4","quadro4"); } }
+
+class Fase5  extends BaseFase { constructor(){ super("Fase5","Fase6","Fase 5: Primeiro Carnaval Juntos ❤️",
+  [ {x:350,y:720,w:4},{x:700,y:400,w:3},{x:300,y:500,w:2},{x:980,y:420,w:4},{x:1390,y:520,w:3} ],
+  {x:1460,y:380}, [ {x:1000,y:340, dir:-1, xMin:0, xMax:1600} ], "fundo5","quadro5"); } }
+
+class Fase6  extends BaseFase { constructor(){ super("Fase6","Fase7","Fase 6: Our Adventure Book ❤️",
+  [{x:200,y:750,w:2}, {x:320,y:670,w:3},{x:500,y:590,w:8},{x:980,y:510,w:5},{x:1300,y:430,w:2} ],
+  {x:1150,y:700}, [ {x:660,y:510, dir:-1, xMin:0, xMax:1600} ], "fundo6","quadro6"); } }
+
+class Fase7  extends BaseFase { constructor(){ super("Fase7","Fase8","Fase 7: Tinhamos aula, mas nem por isso não comemoramos ❤️",
+  [ {x:1240,y:700,w:3},{x:860,y:640,w:5},{x:640,y:520,w:3},{x:420,y:420,w:2},{x:135,y:520,w:3} ],
+  {x:200,y:345}, [ {x:860,y:500, dir:-1, xMin:0, xMax:1600} ], "fundo7","quadro7"); } }
+
+class Fase8  extends BaseFase { constructor(){ super("Fase8","Fase9","Fase 8: Um mês complicado para mim, mas estávamos juntos ❤️",
+  [ {x:560,y:680,w:3}, {x:480,y:440,w:3},{x:820,y:750,w:5},{x:1120,y:550,w:3},{x:732,y:375,w:3} ],
+  {x:800,y:200}, [ {x:840,y:440, dir:-1, xMin:0, xMax:1600} ], "fundo8","quadro8"); } }
+
+class Fase9  extends BaseFase { constructor(){ super("Fase9","Fase10","Fase 9: Nossos primeiros aniversários juntos ❤️",
+  [ {x:0,y:580,w:5},{x:450,y:816,w:3},{x:500,y:500,w:3},{x:700,y:320,w:9},{x:1350,y:435,w:3} ],
+  {x:1420,y:260},
+  [
+    {x:150,y:500, dir:-1, xMin:0, xMax:1600},
+    {x:700,y:140, dir:1,  xMin:0, xMax:1600}
+  ],
+  "fundo9","quadro9"); } }
+
+class Fase10 extends BaseFase { constructor(){ super("Fase10","Fase11","Fase 10: Passando o dia em Pedreira ❤️",
+  [ {x:600,y:740,w:4},{x:960,y:600,w:5},{x:550,y:300,w:7},{x:1300,y:500,w:3},{x:83,y:410,w:3} ],
+  {x:150,y:270},
+  [
+    {x:960,y:520, dir:-1, xMin:0, xMax:1600},
+    {x:560,y:220,dir:1,  xMin:0,xMax:1600}
+  ],
+  "fundo10","quadro10"); } }
+
+class Fase11 extends BaseFase { constructor(){ super("Fase11","Fase12","Fase 11: Assistindo filme de anime juntos ❤️",
+  [ {x:300,y:720,w:3},{x:0,y:500,w:5},{x:600,y:320,w:5},{x:1064,y:200,w:5},{x:1320,y:500,w:1},{x:1320,y:564,w:1},{x:1320,y:628,w:1},{x:1320,y:692,w:1},{x:1320,y:756,w:1},{x:1320,y:820,w:1}],
+  {x:1480,y:700},
+  [
+    {x:100,y:420, dir:-1, xMin:0, xMax:1600},
+    {x:620,y:240, dir:1,  xMin:0, xMax:1600}
+  ],
+  "fundo11","quadro11"); } }
+
+class Fase12 extends BaseFase { 
+  constructor(){ 
+    super("Fase12", null, "Fase Final: O presente e o nosso futuro ❤️",
+      [{x:705,y:816,w:4}], 
+      {x:800,y:676},
+      [],
+      "fundoFinal","quadroFinal", true
+    ); 
+  } 
+}
+
+
+const config = {
+  type: Phaser.AUTO,
+  width: 1600,
+  height: 900,
+  pixelArt:true,
+  physics: { default:'arcade', arcade:{ gravity:{ y:600 }, debug:false } },
+  scale: { mode: Phaser.Scale.FIT, autoCenter: Phaser.Scale.CENTER_BOTH },
+  scene: [
+    Menu, EscolhaPersonagem,
+    Fase0, Fase1, Fase2, Fase3, Fase4, Fase5, Fase6, Fase7, Fase8,
+    Fase9, Fase10, Fase11, Fase12
+  ]
+};
+new Phaser.Game(config);
+</script>
+</body>
+</html>
