@@ -352,7 +352,7 @@ class BaseFase extends Phaser.Scene {
     if (this.final){
       this.physics.pause();
       this.add.rectangle(800,450,1000,320,0xffffff,0.9).setStrokeStyle(4,0x000000);
-      this.add.text(800,450,"Obrigado por esse 1 ano, meu amor,\no primeiro de muitos que virão!\nEu te amo demais,\nMeu cérebro!\n❤️",{fontSize:'48px',fill:'#000',align:'center'}).setOrigin(0.5);
+      this.add.text(800,450,"Obrigado por esse 1 ano, meu amor,\no primeiro de muitos que virão!\nEu te amo demais,\nMeu Cérebro!\n❤️",{fontSize:'48px',fill:'#000',align:'center'}).setOrigin(0.5);
       this.time.delayedCall(15000,()=>this.scene.start('Menu'));
     } else {
       if (this.proximaFase) this.scene.start(this.proximaFase);
@@ -460,3 +460,4 @@ new Phaser.Game(config);
 </script>
 </body>
 </html>
+
